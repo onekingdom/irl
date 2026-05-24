@@ -1,0 +1,19 @@
+services:
+  media-server:
+    build: .
+    network_mode: host
+    volumes:
+      - media-server-data:/app/data
+    environment:
+      - API_PORT=8080
+      - SRT_INPUT_PORT_START=10000
+      - SRT_INPUT_PORT_END=10049
+      - SRT_RELAY_PORT_START=10050
+      - SRT_RELAY_PORT_END=10099
+      - DEFAULT_SRT_LATENCY_MS=2000
+      - DB_PATH=/app/data/media-server.db
+      - LOG_DIR=/app/data/logs
+    restart: unless-stopped
+
+volumes:
+  media-server-data:

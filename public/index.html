@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IRL Media Server</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root {
+  --bg-primary: #0a0a0f;
+  --bg-secondary: #12121a;
+  --bg-tertiary: #1a1a26;
+  --bg-hover: #22222e;
+  --border: #2a2a3a;
+  --border-light: #3a3a4a;
+  --text-primary: #e8e8ef;
+  --text-secondary: #8888a0;
+  --text-muted: #5a5a70;
+  --accent: #6e7fff;
+  --accent-dim: #6e7fff22;
+  --green: #22c55e;
+  --green-dim: #22c55e18;
+  --amber: #f59e0b;
+  --amber-dim: #f59e0b18;
+  --red: #ef4444;
+  --red-dim: #ef444418;
+  --font-body: 'DM Sans', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+  --radius: 8px;
+  --radius-lg: 12px;
+}
+html,body{height:100%;background:var(--bg-primary);color:var(--text-primary);font-family:var(--font-body);font-size:14px;overflow:hidden}
+.app{display:flex;height:100vh}
+.sidebar{width:380px;min-width:380px;border-right:1px solid var(--border);display:flex;flex-direction:column;background:var(--bg-primary)}
+.main-panel{flex:1;overflow-y:auto;background:var(--bg-secondary)}
+.sidebar-header{padding:20px 20px 16px;border-bottom:1px solid var(--border)}
+.sidebar-header h1{font-size:16px;font-weight:700;letter-spacing:-0.02em;margin-bottom:2px}
+.sidebar-header p{font-size:12px;color:var(--text-secondary);font-family:var(--font-mono)}
+.sidebar-actions{padding:12px 20px;border-bottom:1px solid var(--border)}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border:none;border-radius:var(--radius);font-family:var(--font-body);font-size:13px;font-weight:500;cursor:pointer;transition:all 0.15s}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-primary:hover{background:#5a6bff}
+.btn-ghost{background:transparent;color:var(--text-secondary);border:1px solid var(--border)}
+.btn-ghost:hover{background:var(--bg-hover);color:var(--text-primary)}
+.btn-danger{background:var(--red-dim);color:var(--red);border:1px solid transparent}
+.btn-danger:hover{background:#ef444433}
+.btn-sm{padding:5px 10px;font-size:12px}
+.btn-block{width:100%;justify-content:center}
+.btn-green{background:var(--green-dim);color:var(--green);border:1px solid transparent}
+.btn-green:hover{background:#22c55e33}
+.btn-amber{background:var(--amber-dim);color:var(--amber);border:1px solid transparent}
+.btn-amber:hover{background:#f59e0b33}
+.stream-list{flex:1;overflow-y:auto;padding:8px}
+.stream-card{padding:14px 16px;border-radius:var(--radius);cursor:pointer;transition:all 0.15s;border:1px solid transparent;margin-bottom:4px}
+.stream-card:hover{background:var(--bg-tertiary)}
+.stream-card.active{background:var(--bg-tertiary);border-color:var(--border-light)}
+.stream-card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+.stream-card-name{font-weight:600;font-size:14px}
+.stream-card-meta{display:flex;align-items:center;gap:12px;font-size:12px;color:var(--text-secondary);font-family:var(--font-mono)}
+.status{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;font-family:var(--font-mono);text-transform:uppercase;letter-spacing:0.05em;padding:3px 8px;border-radius:20px}
+.status-inactive{color:var(--text-muted);background:var(--bg-tertiary)}
+.status-listening{color:var(--amber);background:var(--amber-dim)}
+.status-live{color:var(--green);background:var(--green-dim)}
+.status-dot{width:6px;height:6px;border-radius:50%;display:inline-block}
+.status-inactive .status-dot{background:var(--text-muted)}
+.status-listening .status-dot{background:var(--amber);animation:pulse 2s infinite}
+.status-live .status-dot{background:var(--green);animation:pulse 1.2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+.empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:var(--text-muted);gap:8px}
+.empty-state svg{opacity:0.3}
+.empty-state p{font-size:14px}
+.detail-panel{padding:28px 32px;max-width:840px;animation:fadeIn 0.2s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.detail-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px}
+.detail-header h2{font-size:22px;font-weight:700;letter-spacing:-0.03em}
+.detail-actions{display:flex;gap:8px}
+.info-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:24px}
+.info-card{background:var(--bg-primary);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px}
+.info-card-label{font-size:11px;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px}
+.info-card-value{font-family:var(--font-mono);font-size:13px;color:var(--text-primary);word-break:break-all;user-select:all;background:var(--bg-tertiary);padding:8px 10px;border-radius:6px}
+.info-card-value.copyable{cursor:pointer;position:relative}
+.info-card-value.copyable:hover{background:var(--bg-hover)}
+.info-card-value.copyable::after{content:'COPY';position:absolute;right:8px;top:50%;transform:translateY(-50%);font-size:9px;color:var(--text-muted);letter-spacing:0.05em}
+.metrics-section{margin-bottom:24px}
+.section-title{font-size:13px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:14px}
+.metrics-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.metric-card{background:var(--bg-primary);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px;text-align:center}
+.metric-value{font-family:var(--font-mono);font-size:28px;font-weight:700;letter-spacing:-0.03em;line-height:1;margin-bottom:4px}
+.metric-label{font-size:11px;color:var(--text-muted);font-weight:500;text-transform:uppercase;letter-spacing:0.06em}
+.metric-value.green{color:var(--green)}.metric-value.amber{color:var(--amber)}.metric-value.red{color:var(--red)}.metric-value.muted{color:var(--text-muted)}
+.sparkline-container{background:var(--bg-primary);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px;margin-bottom:24px}
+.sparkline-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.sparkline{display:flex;align-items:flex-end;gap:2px;height:60px}
+.sparkline-bar{flex:1;background:var(--accent);border-radius:2px 2px 0 0;min-height:2px;transition:height 0.3s ease;opacity:0.7}
+.sparkline-bar:last-child{opacity:1}
+.outputs-section{margin-bottom:24px}
+.outputs-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.output-row{display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--bg-primary);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:6px}
+.output-row-info{flex:1}
+.output-row-name{font-weight:600;font-size:13px;margin-bottom:2px}
+.output-row-meta{font-family:var(--font-mono);font-size:11px;color:var(--text-muted)}
+.output-badge{font-size:10px;font-weight:700;font-family:var(--font-mono);text-transform:uppercase;padding:2px 7px;border-radius:4px;letter-spacing:0.05em}
+.output-badge.relay{background:var(--accent-dim);color:var(--accent)}
+.output-badge.push{background:var(--amber-dim);color:var(--amber)}
+.output-badge.ndi{background:var(--green-dim);color:var(--green)}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.7);backdrop-filter:blur(4px);display:none;align-items:center;justify-content:center;z-index:100}
+.modal-overlay.open{display:flex}
+.modal{background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius-lg);padding:28px;width:420px;max-width:90vw;animation:fadeIn 0.2s ease}
+.modal h2{font-size:18px;font-weight:700;margin-bottom:20px}
+.form-group{margin-bottom:16px}
+.form-group label{display:block;font-size:12px;font-weight:600;color:var(--text-secondary);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.04em}
+.form-group input,.form-group select{width:100%;padding:10px 12px;background:var(--bg-primary);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-primary);font-family:var(--font-mono);font-size:13px;outline:none;transition:border-color 0.15s}
+.form-group input:focus,.form-group select:focus{border-color:var(--accent)}
+.form-group input::placeholder{color:var(--text-muted)}
+.form-group .hint{font-size:11px;color:var(--text-muted);margin-top:4px}
+.form-row{display:flex;gap:12px}
+.form-row .form-group{flex:1}
+.modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:24px}
+.toast{position:fixed;bottom:24px;right:24px;padding:12px 18px;border-radius:var(--radius);font-size:13px;font-weight:500;z-index:200;animation:slideUp 0.3s ease}
+.toast.success{background:#22c55e22;color:var(--green);border:1px solid #22c55e44}
+.toast.error{background:#ef444422;color:var(--red);border:1px solid #ef444444}
+@keyframes slideUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}::-webkit-scrollbar-thumb:hover{background:var(--border-light)}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="sidebar">
+    <div class="sidebar-header">
+      <h1>IRL Media Server</h1>
+      <p id="health-info">loading...</p>
+    </div>
+    <div class="sidebar-actions">
+      <button class="btn btn-primary btn-block" onclick="openCreateStreamModal()">+ New Stream</button>
+    </div>
+    <div class="stream-list" id="stream-list"></div>
+  </div>
+  <div class="main-panel" id="main-panel">
+    <div class="empty-state" id="empty-state">
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M10 9l4 3-4 3V9z"/></svg>
+      <p>Select a stream to view details</p>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="create-stream-modal">
+  <div class="modal">
+    <h2>Create Stream</h2>
+    <div class="form-group">
+      <label>Stream Name</label>
+      <input type="text" id="cs-name" placeholder="e.g. Streamer A">
+    </div>
+    <div class="form-group">
+      <label>SRT Passphrase</label>
+      <input type="text" id="cs-passphrase" placeholder="min 10 characters">
+      <div class="hint">Used for SRT encryption. Share this with the streamer.</div>
+    </div>
+    <div class="form-group">
+      <label>Latency (ms)</label>
+      <input type="number" id="cs-latency" placeholder="2000" value="2000">
+      <div class="hint">Higher = more resilient on bad connections, but more delay.</div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('create-stream-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="createStream()">Create Stream</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="add-output-modal">
+  <div class="modal">
+    <h2>Add Output</h2>
+    <div class="form-group">
+      <label>Output Name</label>
+      <input type="text" id="ao-name" placeholder="e.g. OBS Relay">
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Protocol</label>
+        <select id="ao-protocol" onchange="toggleOutputUrl()"><option value="srt">SRT</option><option value="rtmp">RTMP</option><option value="ndi">NDI</option></select>
+      </div>
+      <div class="form-group">
+        <label>Mode</label>
+        <select id="ao-mode" onchange="toggleOutputUrl()"><option value="relay">Relay (OBS pulls)</option><option value="push">Push (to destination)</option></select>
+      </div>
+    </div>
+    <div class="form-group" id="ao-url-group" style="display:none">
+      <label>Destination URL</label>
+      <input type="text" id="ao-url" placeholder="srt://host:port or rtmp://host/app/key">
+    </div>
+    <div class="form-group" id="ao-passphrase-group">
+      <label>Output Passphrase (optional)</label>
+      <input type="text" id="ao-passphrase" placeholder="optional, for relay SRT output">
+    </div>
+    <div class="form-group" id="ao-ndiname-group" style="display:none">
+      <label>NDI Source Name</label>
+      <input type="text" id="ao-ndiname" placeholder="e.g. StreamerA">
+      <div class="hint">This name appears in OBS NDI source list. Auto-discovered on the network.</div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('add-output-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="addOutput()">Add Output</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+
+<script>
+const API = '';
+let selectedStreamId = null;
+let metricsInterval = null;
+let bitrateHistory = [];
+const MAX_SPARKLINE = 60;
+
+async function api(method, path, body) {
+  const opts = { method, headers: { 'Content-Type': 'application/json' } };
+  if (body) opts.body = JSON.stringify(body);
+  const res = await fetch(API + path, opts);
+  return { status: res.status, data: await res.json() };
+}
+
+function toast(message, type) {
+  type = type || 'success';
+  const el = document.createElement('div');
+  el.className = 'toast ' + type;
+  el.textContent = message;
+  document.getElementById('toast-container').appendChild(el);
+  setTimeout(function() { el.remove(); }, 3000);
+}
+
+function esc(str) { const d = document.createElement('div'); d.textContent = str || ''; return d.childNodes[0] ? d.childNodes[0].textContent : ''; }
+
+function setHtml(el, html) { while(el.firstChild) el.removeChild(el.firstChild); const t = document.createElement('template'); t.insertAdjacentHTML('afterbegin', html); const frag = document.createRange().createContextualFragment(html); el.appendChild(frag); }
+
+function copyText(el) {
+  const text = el.textContent.replace(/COPY$/, '').trim();
+  navigator.clipboard.writeText(text).then(function() { toast('Copied to clipboard'); });
+}
+
+async function refreshHealth() {
+  try {
+    const r = await api('GET', '/api/health');
+    document.getElementById('health-info').textContent = r.data.liveStreams + ' live · ' + r.data.activeStreams + ' active · ' + r.data.totalStreams + ' total';
+  } catch(e) {}
+}
+
+async function refreshStreamList() {
+  const r = await api('GET', '/api/streams');
+  const list = document.getElementById('stream-list');
+  if (r.data.length === 0) {
+    setHtml(list, '<div style="padding:24px;text-align:center;color:var(--text-muted);font-size:13px;">No streams yet. Create one to get started.</div>');
+    return;
+  }
+  var html = r.data.map(function(s) {
+    return '<div class="stream-card ' + (s.id === selectedStreamId ? 'active' : '') + '" onclick="selectStream(\'' + s.id + '\')">' +
+      '<div class="stream-card-header"><span class="stream-card-name">' + esc(s.name) + '</span>' +
+      '<span class="status status-' + s.status + '"><span class="status-dot"></span>' + s.status + '</span></div>' +
+      '<div class="stream-card-meta"><span>Port ' + s.listenPort + '</span><span>Key: ' + s.streamKey.slice(0,6) + '...</span></div></div>';
+  }).join('');
+  setHtml(list, html);
+}
+
+async function selectStream(id) {
+  selectedStreamId = id;
+  bitrateHistory = [];
+  refreshStreamList();
+  await renderDetail();
+  startMetricsPolling();
+}
+
+async function renderDetail() {
+  if (!selectedStreamId) return;
+  const r = await api('GET', '/api/streams/' + selectedStreamId);
+  if (r.status !== 200) { selectedStreamId = null; return; }
+  var s = r.data;
+  var panel = document.getElementById('main-panel');
+  var isRunning = s.status !== 'inactive';
+  var host = location.hostname || 'your-server';
+  var ndiOutputs = (s.outputs || []).filter(function(o) { return o.protocol === 'ndi'; });
+  var relayOutputs = (s.outputs || []).filter(function(o) { return o.mode === 'relay' && o.relayPort; });
+  var obsUrl = ndiOutputs.length > 0
+    ? 'NDI Source: ' + (ndiOutputs[0].ndiName || ndiOutputs[0].name)
+    : (relayOutputs.length > 0
+      ? 'srt://' + host + ':' + relayOutputs[0].relayPort + (relayOutputs[0].passphrase ? '?passphrase=' + relayOutputs[0].passphrase : '')
+      : 'Add a relay or NDI output first');
+
+  var html = '<div class="detail-panel">' +
+    '<div class="detail-header"><div><h2>' + esc(s.name) + '</h2>' +
+    '<span class="status status-' + s.status + '" style="margin-top:6px"><span class="status-dot"></span>' + s.status + '</span></div>' +
+    '<div class="detail-actions">' +
+    (isRunning
+      ? '<button class="btn btn-amber btn-sm" onclick="stopStream(\'' + s.id + '\')">Stop</button>'
+      : '<button class="btn btn-green btn-sm" onclick="startStream(\'' + s.id + '\')">Start</button>') +
+    '<button class="btn btn-danger btn-sm" onclick="deleteStream(\'' + s.id + '\')">Delete</button></div></div>' +
+
+    '<div class="info-grid">' +
+    '<div class="info-card"><div class="info-card-label">Encoder SRT URL</div><div class="info-card-value copyable" onclick="copyText(this)">srt://' + host + ':' + s.listenPort + '?passphrase=' + s.passphrase + '</div></div>' +
+    '<div class="info-card"><div class="info-card-label">OBS Media Source URL</div><div class="info-card-value copyable" onclick="copyText(this)">' + esc(obsUrl) + '</div></div>' +
+    '<div class="info-card"><div class="info-card-label">Stream Key</div><div class="info-card-value copyable" onclick="copyText(this)">' + s.streamKey + '</div></div>' +
+    '<div class="info-card"><div class="info-card-label">Latency</div><div class="info-card-value">' + s.latencyMs + 'ms</div></div></div>' +
+
+    '<div class="metrics-section"><div class="section-title">Live Metrics</div>' +
+    '<div class="metrics-grid">' +
+    '<div class="metric-card"><div class="metric-value muted" id="m-fps">--</div><div class="metric-label">FPS</div></div>' +
+    '<div class="metric-card"><div class="metric-value muted" id="m-bitrate">--</div><div class="metric-label">Bitrate kbps</div></div>' +
+    '<div class="metric-card"><div class="metric-value muted" id="m-speed">--</div><div class="metric-label">Speed</div></div>' +
+    '<div class="metric-card"><div class="metric-value muted" id="m-uptime">--</div><div class="metric-label">Uptime</div></div>' +
+    '</div></div>' +
+
+    '<div class="sparkline-container"><div class="sparkline-header"><span class="section-title" style="margin:0">Bitrate History</span>' +
+    '<span style="font-family:var(--font-mono);font-size:12px;color:var(--text-muted)" id="sparkline-label">last 60s</span></div>' +
+    '<div class="sparkline" id="sparkline"></div></div>' +
+
+    '<div class="outputs-section"><div class="outputs-header"><span class="section-title" style="margin:0">Outputs</span>' +
+    '<button class="btn btn-ghost btn-sm" onclick="openAddOutputModal(\'' + s.id + '\')" ' + (isRunning ? 'disabled title="Stop the stream first"' : '') + '>+ Add Output</button></div>';
+
+  if (s.outputs && s.outputs.length > 0) {
+    html += s.outputs.map(function(o) {
+      var meta = o.protocol === 'ndi' ? 'NDI: ' + esc(o.ndiName || o.name) : (o.mode === 'relay' ? 'srt://' + host + ':' + o.relayPort + (o.passphrase ? '?passphrase=***' : '') : esc(o.url || ''));
+      return '<div class="output-row"><span class="output-badge ' + (o.protocol === 'ndi' ? 'ndi' : o.mode) + '">' + (o.protocol === 'ndi' ? 'NDI' : o.mode) + '</span>' +
+        '<div class="output-row-info"><div class="output-row-name">' + esc(o.name) + '</div>' +
+        '<div class="output-row-meta">' + meta + ' &middot; ' + o.protocol.toUpperCase() + ' &middot; ' + o.codecMode + '</div></div>' +
+        '<button class="btn btn-danger btn-sm" onclick="deleteOutput(\'' + o.id + '\')" ' + (isRunning ? 'disabled' : '') + '>Remove</button></div>';
+    }).join('');
+  } else {
+    html += '<div style="color:var(--text-muted);font-size:13px;padding:8px 0;">No outputs configured.</div>';
+  }
+
+  html += '</div></div>';
+  setHtml(panel, html);
+}
+
+function startMetricsPolling() {
+  stopMetricsPolling();
+  updateMetrics();
+  metricsInterval = setInterval(updateMetrics, 1000);
+}
+function stopMetricsPolling() { if (metricsInterval) { clearInterval(metricsInterval); metricsInterval = null; } }
+
+async function updateMetrics() {
+  if (!selectedStreamId) return;
+  try {
+    var r = await api('GET', '/api/streams/' + selectedStreamId + '/metrics');
+    var d = r.data;
+    var fpsEl = document.getElementById('m-fps');
+    var bitrateEl = document.getElementById('m-bitrate');
+    var speedEl = document.getElementById('m-speed');
+    var uptimeEl = document.getElementById('m-uptime');
+    if (!fpsEl) return;
+    if (d.current) {
+      var fps = d.current.fps, bitrate = Math.round(d.current.bitrateKbps), speed = d.current.speed;
+      fpsEl.textContent = fps.toFixed(1);
+      fpsEl.className = 'metric-value ' + (fps >= 25 ? 'green' : fps >= 15 ? 'amber' : 'red');
+      bitrateEl.textContent = bitrate.toLocaleString();
+      bitrateEl.className = 'metric-value green';
+      speedEl.textContent = speed.toFixed(2) + 'x';
+      speedEl.className = 'metric-value ' + (speed >= 0.95 ? 'green' : speed >= 0.8 ? 'amber' : 'red');
+      uptimeEl.textContent = formatUptime(d.uptimeSeconds);
+      uptimeEl.className = 'metric-value green';
+      bitrateHistory.push(bitrate);
+      if (bitrateHistory.length > MAX_SPARKLINE) bitrateHistory.shift();
+      renderSparkline();
+    } else {
+      fpsEl.textContent = '--'; fpsEl.className = 'metric-value muted';
+      bitrateEl.textContent = '--'; bitrateEl.className = 'metric-value muted';
+      speedEl.textContent = '--'; speedEl.className = 'metric-value muted';
+      uptimeEl.textContent = '--'; uptimeEl.className = 'metric-value muted';
+    }
+  } catch(e) {}
+}
+
+function renderSparkline() {
+  var c = document.getElementById('sparkline');
+  if (!c || bitrateHistory.length === 0) return;
+  var max = Math.max.apply(null, bitrateHistory.concat([1]));
+  var bars = bitrateHistory.map(function(v, i) {
+    var h = Math.max(2, (v / max) * 58);
+    var op = (0.3 + (i / bitrateHistory.length) * 0.7).toFixed(2);
+    return '<div class="sparkline-bar" style="height:' + h + 'px;opacity:' + op + '"></div>';
+  }).join('');
+  setHtml(c, bars);
+  var label = document.getElementById('sparkline-label');
+  if (label) label.textContent = bitrateHistory[bitrateHistory.length - 1] + ' kbps';
+}
+
+function formatUptime(sec) {
+  if (!sec || sec <= 0) return '0s';
+  var h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60;
+  if (h > 0) return h + 'h ' + m + 'm';
+  if (m > 0) return m + 'm ' + s + 's';
+  return s + 's';
+}
+
+async function createStream() {
+  var name = document.getElementById('cs-name').value.trim();
+  var passphrase = document.getElementById('cs-passphrase').value.trim();
+  var latencyMs = parseInt(document.getElementById('cs-latency').value) || 2000;
+  if (!name || !passphrase) { toast('Name and passphrase are required', 'error'); return; }
+  if (passphrase.length < 10) { toast('Passphrase must be at least 10 characters', 'error'); return; }
+  var r = await api('POST', '/api/streams', { name: name, passphrase: passphrase, latencyMs: latencyMs });
+  if (r.status === 201) {
+    closeModal('create-stream-modal');
+    document.getElementById('cs-name').value = '';
+    document.getElementById('cs-passphrase').value = '';
+    document.getElementById('cs-latency').value = '2000';
+    toast('Stream "' + name + '" created on port ' + r.data.listenPort);
+    await refreshStreamList(); await refreshHealth();
+    selectStream(r.data.id);
+  } else { toast(r.data.error || 'Failed to create stream', 'error'); }
+}
+
+var addOutputStreamId = null;
+function openAddOutputModal(streamId) {
+  addOutputStreamId = streamId;
+  document.getElementById('ao-name').value = '';
+  document.getElementById('ao-url').value = '';
+  document.getElementById('ao-passphrase').value = '';
+  document.getElementById('ao-ndiname').value = '';
+  document.getElementById('ao-mode').value = 'relay';
+  document.getElementById('ao-protocol').value = 'srt';
+  toggleOutputUrl();
+  openModal('add-output-modal');
+}
+function toggleOutputUrl() {
+  var protocol = document.getElementById('ao-protocol').value;
+  var mode = document.getElementById('ao-mode').value;
+  var isNdi = protocol === 'ndi';
+  document.getElementById('ao-mode').parentElement.style.display = isNdi ? 'none' : 'block';
+  document.getElementById('ao-url-group').style.display = (!isNdi && mode === 'push') ? 'block' : 'none';
+  document.getElementById('ao-passphrase-group').style.display = (!isNdi && mode === 'relay') ? 'block' : 'none';
+  document.getElementById('ao-ndiname-group').style.display = isNdi ? 'block' : 'none';
+}
+
+async function addOutput() {
+  var name = document.getElementById('ao-name').value.trim();
+  var protocol = document.getElementById('ao-protocol').value;
+  var mode = document.getElementById('ao-mode').value;
+  var url = document.getElementById('ao-url').value.trim();
+  var passphrase = document.getElementById('ao-passphrase').value.trim();
+  var ndiname = document.getElementById('ao-ndiname').value.trim();
+  if (!name) { toast('Output name is required', 'error'); return; }
+  if (protocol === 'ndi' && !ndiname) { toast('NDI source name is required', 'error'); return; }
+  if (protocol !== 'ndi' && mode === 'push' && !url) { toast('Destination URL is required for push mode', 'error'); return; }
+  var body = { name: name, protocol: protocol, mode: protocol === 'ndi' ? 'relay' : mode };
+  if (mode === 'push' && protocol !== 'ndi') body.url = url;
+  if (mode === 'relay' && passphrase && protocol !== 'ndi') body.passphrase = passphrase;
+  if (protocol === 'ndi') body.ndiName = ndiname;
+  var r = await api('POST', '/api/streams/' + addOutputStreamId + '/outputs', body);
+  if (r.status === 201) { closeModal('add-output-modal'); toast('Output "' + name + '" added'); await renderDetail(); }
+  else { toast(r.data.error || 'Failed to add output', 'error'); }
+}
+
+async function startStream(id) {
+  var r = await api('POST', '/api/streams/' + id + '/start');
+  if (r.status === 200) { toast('Stream listener started'); await refreshStreamList(); await refreshHealth(); await renderDetail(); }
+  else { toast(r.data.error || 'Failed to start', 'error'); }
+}
+
+async function stopStream(id) {
+  var r = await api('POST', '/api/streams/' + id + '/stop');
+  if (r.status === 200) { toast('Stream stopped'); bitrateHistory = []; await refreshStreamList(); await refreshHealth(); await renderDetail(); }
+  else { toast(r.data.error || 'Failed to stop', 'error'); }
+}
+
+async function deleteStream(id) {
+  if (!confirm('Delete this stream and all its outputs?')) return;
+  var r = await api('DELETE', '/api/streams/' + id);
+  if (r.status === 200) {
+    toast('Stream deleted');
+    selectedStreamId = null;
+    stopMetricsPolling();
+    setHtml(document.getElementById('main-panel'),
+      '<div class="empty-state"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M10 9l4 3-4 3V9z"/></svg><p>Select a stream to view details</p></div>');
+    await refreshStreamList(); await refreshHealth();
+  } else { toast(r.data.error || 'Failed to delete', 'error'); }
+}
+
+async function deleteOutput(id) {
+  if (!confirm('Remove this output?')) return;
+  var r = await api('DELETE', '/api/outputs/' + id);
+  if (r.status === 200) { toast('Output removed'); await renderDetail(); }
+  else { toast(r.data.error || 'Failed to remove', 'error'); }
+}
+
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+function openCreateStreamModal() { openModal('create-stream-modal'); setTimeout(function(){ document.getElementById('cs-name').focus(); }, 100); }
+
+document.querySelectorAll('.modal-overlay').forEach(function(ov) {
+  ov.addEventListener('click', function(e) { if (e.target === ov) ov.classList.remove('open'); });
+});
+
+refreshStreamList();
+refreshHealth();
+setInterval(refreshHealth, 5000);
+setInterval(refreshStreamList, 5000);
+</script>
+</body>
+</html>
